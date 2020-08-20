@@ -1,8 +1,6 @@
 # data 
 
-/data/cancer_data.xls
-/data/cancer_info.xlsx
-/data/cancer_data.csv
+/data/cancer*
 
 # scripts
 
