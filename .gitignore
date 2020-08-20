@@ -1,0 +1,9 @@
+# data 
+
+/cancer_data.xls
+/cancer_data.xlsx
+
+# scripts
+
+/scripts/jupyter/.ipynb_checkpoints
+
