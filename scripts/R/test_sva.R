@@ -1,12 +1,13 @@
 library(sva)
 library(pamr)
 library(limma)
+
 data <- read.csv("../../data/cancer_data_BE.csv", row.names = 'ID')
 
-bedata <- t(data[,2:30])
+bedata <- t(data[,2:39])
 
 
-combat_data <- t(ComBat(dat = bedata, batch = data$Origin))
+combat_data <- t(ComBat(dat = bedata, batch = data$Origin, ref.batch = c('B')))
 
 data_new <- as.data.frame(combat_data)
 Origin <- data$Origin
