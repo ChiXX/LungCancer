@@ -206,3 +206,12 @@ Case组数据源于B，从C取相应比例的Control，重点关注召回率的�
 
 ![](picture/index4.png)
 
+## 数据可视化
+
+使用PCA，TSENE和UMAP进行可视化。
+
+PCA为常用的线性降维方法，TSNE为非线性降维方法，UMAP为TSNE的升级版。
+
+![](picture/index5.png)
+
+**效果并不明显**
