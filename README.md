@@ -1,15 +1,15 @@
 # Lung Cancer Prediction
 
-## Data preprocessing
+## Data preprocess
 
-### 1. 对源文件进行修改
+### 1. Modify the source file
 
-* 录入错误
-* 格式错误：str->float
+* input error
+* type error: str->float
 
-### 2. 计算横轴缺失比例
+### 2. Missingness of rows
 
-缺失__以下，AB组剩余的样本数量
+Calculate the amount of case and control group after filtering by different missing rate.
 
 | MissingRate | A_left | B_left |
 | ----------- | ------ | ------ |
@@ -35,9 +35,9 @@
 | 0.95        | 4642   | 4099   |
 | 1           | 4642   | 4099   |
 
-最终保留横轴缺失20%以下的样本
+keep the sample with missing rate below 20%
 
-### 3. 计算纵轴缺失比例
+### 3. Missingness of columns
 
 |                   | A        | B        | Delete |
 | ----------------- | -------- | -------- | ------ |
@@ -114,54 +114,53 @@
 | T-ESR             | 0.726529 | 1        | Y      |
 | T-CRP             | 0.795004 | 1        | Y      |
 
-最终纵轴缺失15%以上的特征被移除
+Drop the features with more than 15% missingness.
 
-### 4.异常值处理
+### 4. Outlier
 
-1. 将年龄按照52岁以下，52-68岁，68岁以上分成Y(oung), M(iddle), 和O(ld)三组。
-2. 特征HCT是以百分率形式表现的，将其中大于1的值替换为空值。
-3. 按照来源，年龄和性别分组后分别计算其中位数并填入对应组的空值中。
-4. 其余特征按照3倍上下四分位的方法处理过大和过小的值。
-5. 按照来源对特征做t-test，将存在差异的特征视为收到batch effects的影响。
+1. Split the data by age below 52，52-68，over 68, and defined as Y(oung), M(iddle), andO(ld).
+2. HCT (hematocrit level) should be 0-1，replace >1 with NaN。
+3. According to the source of data (hospital and  medical examination center)，age and sex, group the data and fill the NaN with median number of corresponding group.
+4. In other features, the abnormal values (that are out the 3 times of  upper&lower quartile) will be replaced with mediate number.
 
 ### 5. Batch Effects Correction
 
-使用```SVA```包中的```comBat```模块修正批次效应，使用来源B作为参考。
+The data from same group (case or control) but different sources (hospital and examination center) shows difference in numerical distribution, which is highly possibly caused by different machines used in two places. Some even can be tell by eye check. 
 
-### 6. 数据融合
+t-test is used here to check if there is significant difference between two sources. And the features that show difference will be selected to be corrected with the model `comBat` in ```SVA``` .
 
-将修正的数据融合进原数据中，按照是否患病分组做t-test，如下特征差异不显著，但主观上保留了Age：
+### 6. Merging
+
+After correction, these features didn't not show different between case and control with t-test and dropped.
 
 ```
-['Age', 'WBC', 'EO%', 'EO']
+['WBC', 'EO%', 'EO']
 ```
 
 ## Feature Selection
 
-采用皮尔森相关系数，卡方，互信息三种方法对特征进行初步的筛选，相关分析的结果如下图：
+ correlation analysis:![](picture/index.png)
 
-![](picture/index.png)
-
-相关性较高的一对或一组特征中保留在卡方检验和互信息检验中排名较高的一个特征
-
-最终，如下特征被移除：
+Some features are highly related with other feature. with the reference of R^2^-test and mutual information score, these features are removed.
 
 ```
 ['GLO', 'NEUT%', 'HCT', 'TCH','TBIL', 'IBIL', 'LDH-L']
 ```
 
-## Model Traning
+## Model Training
 
-### 数据集的划分
-1. 按照数据的来源，A共有3728例，B共有212例，C共有3798例。其中AB均为Case，C为Control。
-2. 从C中取出212例与B组成数据集1，记为X1，y1.
-3. 剩余的C与A组成数据集2，记为X2，y2.
-### 模型训练
-1. 采用交叉验证与网格搜索结合的方法对数据集1和数据集2分别训练得到模型rf_clf_mini, xgb_clf_mini和rf_clf, xgb_clf.
-2. 选择random froest 和XGBoost训练模型，使用recall作为评价指标
+### data split
 
-### 模型评估
-使用X1，y1评估rf_clf和xgb_clf的表现，X2，y2评估rf_clf_mini和xgb_clf_mini的表现。
+1. According to data sources, A has 3728 samples, B has 212, C has 3798. A and B are case, C is control.
+2. Select 212 samples from C, merge with B and define as dataset 1, denoted as X1, y1.
+3. The rest C is combined with A as dataset 2, denoted as X2, y2.
+
+### training
+1. Cross validation and grid search are used on dataset 1 and dataset 2 for  training. Finally, rf_clf_mini, xgb_clf_mini and rf_clf, xgb_clf are got.
+2. Algorithm is random forest and XGBoost,  assessment is recall.
+
+### evaluation
+Testing rf_clf and xgb_clf with dataset 1，rf_clf_mini and xgb_clf_mini and are tested with dataset 2.
 
 |      | rf_clf              | xgb_clf               | rf_clf_mini        | xgb_clf_mini       |
 | :--: | :------------------ | --------------------- | ------------------ | ------------------ |
@@ -172,13 +171,13 @@
 
 ![](picture/index2.png)
 
-### 样本量对模型的影响
+###  Influence of sample size on Model 
 
-使用XGBoost默认参数，未进行调参。
+Some tests.
 
-1. 数量对模型的影响:
+1. Sample size:
 
-来源B有case 212例，以此为基准，从A取样补入Case组，再从C取出相应数量的Control。
+   With the increase of sample size, the model learns more and more difference between different data source. It also illustrates that the batch effect is really obvious and was not totally removed.
 
 |      | 212:212            | 424:424            | 636:636            | 848:848            | 1060:1060          |
 | ---- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
@@ -193,25 +192,27 @@
 
 
 
-2. 样本比例对模型的影响:
+2.  Proportion of positive and negative cases :
 
-Case组数据源于B，从C取相应比例的Control，重点关注召回率的变化。
+This part is make to tell hospital they should give us more case data from same source.
 
-|      | 1:1                | 1:2                | 1:3                | 1:4                | 1:5                |
-| ---- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
-| ACC  | 0.65625            | 0.6963350785340314 | 0.8156862745098039 | 0.8364779874213837 | 0.8586387434554974 |
-| REC  | 0.5522388059701493 | 0.5522388059701493 | 0.3888888888888889 | 0.3492063492063492 | 0.2898550724637681 |
-| SPC  | 0.7704918032786885 | 0.7741935483870968 | 0.9836065573770492 | 0.9568627450980393 | 0.9840255591054313 |
-| AUC  | 0.7093222412527527 | 0.8109051516610495 | 0.7865057680631451 | 0.8016184251478369 | 0.8457656155947585 |
+The more control sample, the less the recall.
+
+|         | 1:1                | 1:2                | 1:3                | 1:4                | 1:5                |
+| ------- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
+| ACC     | 0.65625            | 0.6963350785340314 | 0.8156862745098039 | 0.8364779874213837 | 0.8586387434554974 |
+| **REC** | 0.5522388059701493 | 0.5522388059701493 | 0.3888888888888889 | 0.3492063492063492 | 0.2898550724637681 |
+| SPC     | 0.7704918032786885 | 0.7741935483870968 | 0.9836065573770492 | 0.9568627450980393 | 0.9840255591054313 |
+| AUC     | 0.7093222412527527 | 0.8109051516610495 | 0.7865057680631451 | 0.8016184251478369 | 0.8457656155947585 |
 
 ![](picture/index4.png)
 
-## 数据可视化
+## Visualization
 
-使用PCA，TSENE和UMAP进行可视化。
+linear method: PCA
 
-PCA为常用的线性降维方法，TSNE为非线性降维方法，UMAP为TSNE的升级版。
+non-linear method: TSENE and UMAP。
 
 ![](picture/index5.png)
 
-**效果并不明显**
+**not obvious**
